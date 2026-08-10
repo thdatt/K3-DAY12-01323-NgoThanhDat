@@ -1,0 +1,56 @@
+# ============================================================
+# CP5 — Cấu hình deploy Render (Infrastructure as Code)
+#
+# Commit file này vào Git ở GỐC repo → Render tự đọc và dựng hạ tầng.
+# Deploy: Render Dashboard → New → Blueprint → chọn repo.
+# ============================================================
+
+services:
+  # ──────────────────────────────────────
+  # Web Service — AI Agent
+  # ──────────────────────────────────────
+  - type: web
+    name: day12-agent
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: singapore              # chọn region gần user nhất
+    plan: free
+
+    healthCheckPath: /health
+    autoDeploy: true               # tự deploy khi push lên GitHub
+
+    envVars:
+      # sync: false = Render biết cần biến này nhưng KHÔNG lấy giá trị từ
+      # file. Bắt nhập tay trên dashboard → tránh lỡ tay commit secret.
+      - key: AGENT_API_KEY
+        sync: false
+
+      # Lấy connection string từ Redis add-on bên dưới, không hardcode.
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: day12-redis
+          property: connectionString
+
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "10"
+      - key: MONTHLY_BUDGET_USD
+        value: "10.0"
+      - key: LOG_LEVEL
+        value: INFO
+
+  # ──────────────────────────────────────
+  # Redis — nơi giữ state dùng chung
+  # ──────────────────────────────────────
+  - type: redis
+    name: day12-redis
+    plan: free
+    region: singapore
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []                # [] = chỉ cho phép truy cập nội bộ Render
+
+# ============================================================
+# Ghi chú: KHÔNG cần bọc `sh -c` cho Render như bên Railway, vì Render chạy
+# start command QUA SHELL nên $PORT được thay bình thường. Ở đây dùng luôn
+# CMD trong Dockerfile (đã có sẵn `sh -c`).
+# ============================================================

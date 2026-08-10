@@ -1,38 +1,19 @@
-# Không copy những file này vào Docker image
-# Lý do: giảm context size, tăng security
+# CP2 — Không copy những thứ này vào image.
+# Lý do: giảm dung lượng context (build nhanh hơn) và tránh đưa secret vào image.
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-
-# Virtual environment
-venv/
-env/
-.venv/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Secrets — QUAN TRỌNG: không bao giờ đưa .env vào image
 .env
 .env.*
 !.env.example
-
-# Git
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
 .git/
 .gitignore
-
-# Docs và test
-*.md
+screenshots/
 tests/
-docs/
+.pytest_cache/
+*.md
+.vscode/
+.idea/

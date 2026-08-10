@@ -1,0 +1,65 @@
+# ============================================================
+# CP2/CP4 — Full stack: Nginx (load balancer) → N x agent → Redis
+#
+# Chạy:  docker compose up -d --scale agent=3
+# Test:  curl http://localhost:8000/health
+# Dừng:  docker compose down
+# ============================================================
+
+services:
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  agent:
+    build: .
+    # `expose` chứ không phải `ports`: agent KHÔNG được publish 8000:8000 ra
+    # host, nếu không `--scale agent=3` sẽ lỗi vì 3 container tranh nhau cùng
+    # một cổng. Cổng 8000 trên host được map duy nhất qua Nginx (8000:80).
+    expose:
+      - "8000"
+    environment:
+      # Cú pháp ${VAR:?message} khiến Compose DỪNG NGAY với thông báo rõ ràng
+      # nếu biến chưa được đặt — tốt hơn nhiều so với để container khởi động
+      # rồi crash với lỗi khó hiểu.
+      AGENT_API_KEY: ${AGENT_API_KEY:?set AGENT_API_KEY in .env}
+      REDIS_URL: redis://redis:6379/0
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-10}
+      MONTHLY_BUDGET_USD: ${MONTHLY_BUDGET_USD:-10.0}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      redis:
+        # Chờ Redis SẴN SÀNG nhận lệnh, không chỉ "đã tạo container".
+        # Viết `depends_on: [redis]` suông thì agent khởi động lúc Redis còn
+        # đang boot và crash vì không kết nối được.
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, urllib.request; port = os.getenv('PORT', '8000'); urllib.request.urlopen(f'http://127.0.0.1:{port}/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8000:80"          # cổng duy nhất mở ra host
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - agent
+    restart: unless-stopped
+
+volumes:
+  redis-data:
