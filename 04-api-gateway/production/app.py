@@ -157,7 +157,13 @@ async def ask_agent(
         "answer": response_text,
         "usage": {
             "requests_remaining": rate_info["remaining"],
-            "budget_remaining_usd": usage.total_cost_usd,
+            # ✅ FIX: field này trước đây tên "budget_remaining_usd" nhưng lại gán
+            # usage.total_cost_usd — tức là số tiền ĐÃ TIÊU, không phải số CÒN LẠI.
+            # Client đọc nhầm sẽ tưởng sắp hết tiền trong khi mới dùng vài xu.
+            "budget_used_usd": usage.total_cost_usd,
+            "budget_remaining_usd": round(
+                max(0.0, cost_guard.daily_budget_usd - usage.total_cost_usd), 6
+            ),
         },
     }
 

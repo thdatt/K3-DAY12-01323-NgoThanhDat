@@ -7,8 +7,15 @@ Tất cả config đọc từ environment variables.
 - Validation rõ ràng — fail fast nếu thiếu config quan trọng
 """
 import os
-import logging
 from dataclasses import dataclass, field
+
+from dotenv import load_dotenv
+
+# ✅ FIX: nạp file .env vào os.environ TRƯỚC khi Settings đọc config.
+# Thiếu dòng này thì `cp .env.example .env` hoàn toàn vô tác dụng.
+# override=False (mặc định) → env var thật của OS/cloud platform vẫn được ưu tiên
+# hơn file .env, đúng tinh thần 12-Factor.
+load_dotenv()
 
 
 @dataclass
@@ -34,15 +41,22 @@ class Settings:
         default_factory=lambda: os.getenv("ALLOWED_ORIGINS", "*").split(",")
     )
 
+    # ✅ FIX: gom cảnh báo vào đây thay vì log ngay lúc import (xem validate()).
+    startup_warnings: list = field(default_factory=list)
+
     def validate(self):
         """Fail fast nếu thiếu config bắt buộc."""
-        warnings = []
+        # ✅ FIX: KHÔNG gọi logging.warning() ở đây.
+        # File này được import trước khi app.py kịp gọi logging.basicConfig().
+        # Gọi logging.warning() ở module level sẽ ngầm kích hoạt basicConfig()
+        # với level WARNING + format mặc định, khiến cấu hình JSON logging của
+        # app.py bị vô hiệu hoá. Thay vào đó chỉ gom cảnh báo lại, để app.py
+        # tự log ra SAU khi logging đã được cấu hình đúng.
         if not self.openai_api_key:
-            warnings.append("OPENAI_API_KEY not set — using mock LLM")
+            self.startup_warnings.append("OPENAI_API_KEY not set — using mock LLM")
         if not self.api_key and self.environment == "production":
+            # Lỗi nghiêm trọng thì vẫn fail fast ngay lập tức
             raise ValueError("AGENT_API_KEY must be set in production!")
-        for w in warnings:
-            logging.warning(w)
         return self
 
 

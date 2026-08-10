@@ -28,8 +28,17 @@ from utils.mock_llm import ask
 logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
     format='{"time":"%(asctime)s","level":"%(levelname)s","msg":"%(message)s"}',
+    # ✅ FIX: config.py gọi logging.warning() lúc import → root logger đã bị gắn
+    # handler mặc định ở level WARNING, khiến basicConfig() ở đây thành no-op và
+    # mọi logger.info() bị nuốt. force=True ép ghi đè lại cấu hình đó.
+    force=True,
 )
 logger = logging.getLogger(__name__)
+
+# ✅ FIX: log các cảnh báo config SAU khi logging đã cấu hình xong,
+# nhờ vậy chúng cũng ra đúng format JSON như mọi log khác.
+for _warning in settings.startup_warnings:
+    logger.warning(_warning)
 
 # Track startup time cho /health
 START_TIME = time.time()

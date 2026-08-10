@@ -1,7 +1,14 @@
 """Production config — 12-Factor: tất cả từ environment variables."""
 import os
-import logging
 from dataclasses import dataclass, field
+
+from dotenv import load_dotenv
+
+# ✅ Nạp file .env vào os.environ TRƯỚC khi Settings đọc config.
+# override=False (mặc định) → biến môi trường thật do cloud platform inject
+# (ví dụ PORT của Railway) vẫn thắng file .env. Đúng thứ tự ưu tiên 12-Factor:
+#   env thật của OS/cloud  >  file .env  >  giá trị mặc định trong code
+load_dotenv()
 
 
 @dataclass
@@ -36,19 +43,36 @@ class Settings:
     daily_budget_usd: float = field(
         default_factory=lambda: float(os.getenv("DAILY_BUDGET_USD", "5.0"))
     )
+    global_daily_budget_usd: float = field(
+        default_factory=lambda: float(os.getenv("GLOBAL_DAILY_BUDGET_USD", "50.0"))
+    )
 
     # Storage
     redis_url: str = field(default_factory=lambda: os.getenv("REDIS_URL", ""))
 
+    # ✅ Gom cảnh báo lại đây thay vì log ngay lúc import — xem validate()
+    startup_warnings: list = field(default_factory=list)
+
     def validate(self):
-        logger = logging.getLogger(__name__)
+        """Fail fast: thiếu config sống còn thì crash ngay lúc khởi động."""
+        # ✅ KHÔNG gọi logging.warning() trong hàm này.
+        # File config được import trước khi main.py kịp gọi logging.basicConfig().
+        # Gọi logging.warning() ở thời điểm đó sẽ ngầm kích hoạt basicConfig()
+        # với format mặc định, khiến cấu hình JSON logging của main.py thành
+        # vô tác dụng và mọi logger.info() bị nuốt mất.
         if self.environment == "production":
             if self.agent_api_key == "dev-key-change-me":
                 raise ValueError("AGENT_API_KEY must be set in production!")
             if self.jwt_secret == "dev-jwt-secret":
                 raise ValueError("JWT_SECRET must be set in production!")
+            if not self.redis_url:
+                # Cảnh báo chứ không crash: vẫn có thể chạy 1 instance không Redis
+                self.startup_warnings.append(
+                    "REDIS_URL chưa đặt trong production — rate limit và budget "
+                    "sẽ đếm riêng trên từng instance, số liệu sẽ SAI khi scale."
+                )
         if not self.openai_api_key:
-            logger.warning("OPENAI_API_KEY not set — using mock LLM")
+            self.startup_warnings.append("OPENAI_API_KEY not set — using mock LLM")
         return self
 
 

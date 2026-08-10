@@ -2,7 +2,13 @@
 builder = "DOCKERFILE"
 
 [deploy]
-startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2"
+# ✅ FIX: phải bọc trong `sh -c`, nếu không deploy sẽ chết ngay với lỗi:
+#   Error: Invalid value for '--port': '$PORT' is not a valid integer.
+#
+# Railway chạy startCommand ở dạng exec (không qua shell), nên chuỗi "$PORT"
+# được truyền NGUYÊN VĂN cho uvicorn thay vì được thay bằng số cổng thật.
+# Bọc trong `sh -c '...'` để shell làm việc thay thế biến trước khi gọi uvicorn.
+startCommand = "sh -c 'uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2'"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"

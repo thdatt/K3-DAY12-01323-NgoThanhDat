@@ -12,6 +12,20 @@ import json
 import subprocess
 
 
+def read_text(path: str) -> str:
+    """
+    Đọc file luôn bằng UTF-8.
+
+    ✅ FIX: trước đây code gọi thẳng open(path).read(). Trên Windows,
+    `open()` mặc định dùng encoding của hệ thống (cp1252 với máy tiếng Việt),
+    nên gặp ký tự tiếng Việt hoặc emoji trong chính source của lab là ném
+    UnicodeDecodeError và script chết giữa chừng. Trên Linux/macOS thì
+    mặc định đã là UTF-8 nên không lộ ra lỗi này.
+    """
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
 def check(name: str, passed: bool, detail: str = "") -> dict:
     icon = "✅" if passed else "❌"
     print(f"  {icon} {name}" + (f" — {detail}" if detail else ""))
@@ -53,7 +67,7 @@ def run_checks():
     env_ignored = False
     for gi in [gitignore, root_gitignore]:
         if os.path.exists(gi):
-            content = open(gi).read()
+            content = read_text(gi)
             if ".env" in content:
                 env_ignored = True
                 break
@@ -66,7 +80,7 @@ def run_checks():
     for f in ["app/main.py", "app/config.py"]:
         fpath = os.path.join(base, f)
         if os.path.exists(fpath):
-            content = open(fpath).read()
+            content = read_text(fpath)
             for bad in ["sk-", "password123", "hardcoded"]:
                 if bad in content:
                     secrets_found.append(f"{f}:{bad}")
@@ -78,7 +92,7 @@ def run_checks():
     print("\n🌐 API Endpoints (code check)")
     main_py = os.path.join(base, "app", "main.py")
     if os.path.exists(main_py):
-        content = open(main_py).read()
+        content = read_text(main_py)
         results.append(check("/health endpoint defined",
                              '"/health"' in content or "'/health'" in content))
         results.append(check("/ready endpoint defined",
@@ -98,7 +112,7 @@ def run_checks():
     print("\n🐳 Docker")
     dockerfile = os.path.join(base, "Dockerfile")
     if os.path.exists(dockerfile):
-        content = open(dockerfile).read()
+        content = read_text(dockerfile)
         results.append(check("Multi-stage build",
                              "AS builder" in content or "AS runtime" in content))
         results.append(check("Non-root user",
@@ -110,7 +124,7 @@ def run_checks():
 
     dockerignore = os.path.join(base, ".dockerignore")
     if os.path.exists(dockerignore):
-        content = open(dockerignore).read()
+        content = read_text(dockerignore)
         results.append(check(".dockerignore covers .env",
                              ".env" in content))
         results.append(check(".dockerignore covers __pycache__",

@@ -6,8 +6,13 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y gcc libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+# ✅ FIX: đã bỏ `apt-get install gcc libpq-dev`.
+# Dependencies của project (fastapi, uvicorn[standard], redis) đều có sẵn
+# wheel dựng sẵn cho manylinux/CPython 3.11 — pip tải về dùng luôn, không
+# cần biên dịch gì cả. Cài gcc ở đây tốn thêm ~200 MB tải về và nhiều phút
+# build mà không dùng tới một lần nào.
+# Chỉ thêm lại apt-get khi requirements có package thật sự phải compile
+# (ví dụ psycopg2 bản source, hoặc numpy trên kiến trúc lạ).
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt

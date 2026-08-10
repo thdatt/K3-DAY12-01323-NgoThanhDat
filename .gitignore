@@ -34,3 +34,6 @@ Thumbs.db
 # ── Docker volumes (local dev) ─────────────────────��──────
 data/
 volumes/
+
+# ── Ghi chú cá nhân — không nộp ───────────────────────────
+_TIEN_DO_LAB.md
