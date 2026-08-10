@@ -4,6 +4,10 @@
 .env.production
 .env.*
 !.env.example
+# ✅ FIX: pattern `.env.*` ở trên bắt luôn cả file mẫu `.env.local.example`,
+# khiến file huong dan bi chan oan. Thêm ngoại lệ cho mọi file kết thúc
+# bằng `.example` — đây là file mẫu, không chứa giá trị thật.
+!*.example
 
 # ── Python ──────────────────────────��────────────────────
 __pycache__/

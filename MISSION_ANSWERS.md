@@ -584,7 +584,13 @@ Nhưng repo **không kèm file này** (đúng ra là vậy — nó chứa secret
 WARN: the attribute `version` is obsolete, it will be ignored
 ```
 
-Từ Compose V2, dòng `version: "3.9"` ở đầu file không còn ý nghĩa. Không gây lỗi, nhưng nên xoá cho sạch.
+Từ Compose V2, dòng `version: "3.9"` ở đầu file không còn ý nghĩa.
+
+**Đã sửa:** xoá dòng đó khỏi `02-docker/production/docker-compose.yml` và `05-scaling-reliability/production/docker-compose.yml`. Kiểm chứng bằng `docker compose config --quiet` — không còn cảnh báo nào.
+
+**Đã bổ sung file mẫu `.env.local.example`** cho cả 2 thư mục. File `.env.local` thật chứa secret nên bị `.gitignore` chặn — nghĩa là ai clone repo về cũng gặp lỗi `env file .env.local not found` mà không biết cần điền gì. File `.example` giải quyết chuyện đó: copy ra là chạy được.
+
+Kèm theo phải sửa `.gitignore`: pattern `.env.*` bắt luôn cả `.env.local.example`, khiến file hướng dẫn bị chặn oan. Đã thêm ngoại lệ `!*.example`, đồng thời kiểm tra lại 4 file `.env`/`.env.local` thật vẫn bị chặn đúng.
 
 ---
 
@@ -666,6 +672,10 @@ railway variables --set "AGENT_API_KEY=my-secret-key"
 Hai cơ chế secret của Render đáng chú ý:
 - `sync: false` — Render biết cần biến này nhưng **không lấy giá trị từ file**, bắt nhập tay trên dashboard. Tránh lỡ tay commit secret.
 - `generateValue: true` — Render **tự sinh chuỗi ngẫu nhiên**. Rất hợp với `AGENT_API_KEY`: không ai, kể cả lập trình viên, biết giá trị cho tới khi mở dashboard xem.
+
+> **✅ Đã sửa `03-cloud-deployment/railway/railway.toml`:** file này dính đúng lỗi `$PORT` đã làm chết deploy ở Part 6 — Railway chạy `startCommand` dạng exec nên `$PORT` không được thay thế. Đã bọc trong `sh -c '...'`.
+>
+> Riêng `render.yaml` thì **giữ nguyên**, vì Render chạy `startCommand` **qua shell**, `$PORT` được thay bình thường. Đây là khác biệt thật giữa 2 nền tảng, sửa nhầm chỗ đang đúng còn tệ hơn.
 
 > **⚠️ Phát hiện:** thư mục `03-cloud-deployment/render/` **chỉ có đúng file `render.yaml`**, thiếu `app.py` và `requirements.txt`. Trong khi `render.yaml` khai báo `buildCommand: pip install -r requirements.txt` và `startCommand: uvicorn app:app`. Deploy y nguyên thư mục này sẽ fail vì không có gì để build. Thêm nữa, Render yêu cầu `render.yaml` nằm ở **gốc repository** mới nhận diện được blueprint. Việc deploy thật sẽ làm ở Part 6 với thư mục `06-lab-complete/` — nơi có đủ code lẫn config.
 

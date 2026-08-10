@@ -11,7 +11,13 @@ builder = "NIXPACKS"
 
 [deploy]
 # ✅ Start command — Railway inject PORT tự động
-startCommand = "uvicorn app:app --host 0.0.0.0 --port $PORT"
+# ✅ FIX: phải bọc trong `sh -c`, nếu không deploy sẽ chết ngay với lỗi:
+#   Error: Invalid value for '--port': '$PORT' is not a valid integer.
+#
+# Railway chạy startCommand ở dạng exec (không qua shell), nên chuỗi "$PORT"
+# được truyền NGUYÊN VĂN cho uvicorn thay vì thay bằng số cổng thật.
+# Lỗi này đã gặp thật khi deploy 06-lab-complete lên Railway.
+startCommand = "sh -c 'uvicorn app:app --host 0.0.0.0 --port $PORT'"
 
 # Health check — Railway restart nếu fail
 healthcheckPath = "/health"

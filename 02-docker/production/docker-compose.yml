@@ -12,7 +12,9 @@
 # Stop:  docker compose down
 # ============================================================
 
-version: "3.9"
+# ✅ FIX: đã xoá dòng `version: "3.9"`.
+# Từ Docker Compose V2, khoá này không còn tác dụng và Compose in cảnh báo:
+#   WARN: the attribute `version` is obsolete, it will be ignored
 
 services:
 
